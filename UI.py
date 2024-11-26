@@ -26,7 +26,7 @@ class AbsensiApp(tk.Tk):
     def show_pemilik_login(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("350x300")
+        self.geometry("500x400")
         self.configure(bg='#3d2b1f')
 
         tk.Label(self, text="Login Pemilik", font=("Arial", 16, "bold"), bg='#f0f0f0', fg='#333').pack(pady=(20, 0))
@@ -45,7 +45,7 @@ class AbsensiApp(tk.Tk):
     def show_pemilik_menu(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("350x300")
+        self.geometry("500x400")
         self.configure(bg='#3d2b1f')
 
         tk.Label(self, text="Menu Pemilik", font=("Arial", 16, "bold"), bg='#f0f0f0', fg='#333').pack(pady=(20, 0))
@@ -146,7 +146,7 @@ class AbsensiApp(tk.Tk):
         # Bersihkan semua widget
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("350x250")
+        self.geometry("500x400")
         self.configure(bg='#3d2b1f')
 
         tk.Label(self, text="Login Pegawai", font=("Arial", 16, "bold"), bg='#f0f0f0', fg='#333').pack(pady=(20, 0))
@@ -177,7 +177,7 @@ class AbsensiApp(tk.Tk):
         # Bersihkan semua widget
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("400x300")
+        self.geometry("500x400")
         self.configure(bg="#3d2b1f")
 
         # Judul
@@ -185,16 +185,16 @@ class AbsensiApp(tk.Tk):
 
         # Pilihan masuk/keluar
         tk.Label(self, text="Apakah ini waktu masuk atau keluar? (masuk/keluar):", 
-                 font=("Helvetica", 10), bg="#3d2b1f", fg="white").pack(pady=5)
+                 font=("Helvetica", 15), bg="#3d2b1f", fg="white").pack(pady=5)
         
         combo_option = ttk.Combobox(self, values=["Masuk", "Keluar"], font=("Helvetica", 10))
         combo_option.pack()
 
         # Input nomor telepon
         tk.Label(self, text="Masukkan nomor telepon untuk check-in/check-out:", 
-                 font=("Helvetica", 10), bg="#3d2b1f", fg="white").pack(pady=5)
+                 font=("Helvetica", 15), bg="#3d2b1f", fg="white").pack(pady=5)
         
-        entry_phone = tk.Entry(self, font=("Helvetica", 10))
+        entry_phone = tk.Entry(self, font=("Helvetica", 20))
         entry_phone.pack()
 
         # Tombol submit dan back
@@ -208,7 +208,7 @@ class AbsensiApp(tk.Tk):
         # Bersihkan semua widget
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("400x300")
+        self.geometry("500x400")
         self.configure(bg="#3d2b1f")
 
         # Judul
