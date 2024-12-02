@@ -3,18 +3,15 @@ from tkinter import ttk, messagebox
 import pyodbc
 from datetime import datetime, timedelta
 from tkcalendar import DateEntry
+from PIL import Image, ImageTk
 
-connectionString = (
-    'DRIVER={ODBC Driver 18 for SQL Server};'
-    'SERVER=BAHAGIA\\SQLEXPRESS;'
-    'DATABASE=testingManpro;'
-    'Trusted_Connection=yes;'
-    'TrustServerCertificate=yes;'
-)
+connectionString = ('DRIVER={ODBC Driver 17 for SQL Server};'
+                    'Server=LEGION-YOO\\SQLEXPRESS;'
+                    'Database=TestingManpro;'
+                    'Trusted_Connection=yes;'
+                    'TrustServerCertificate=yes;')
 
 BACKGROUND_COLOR = "#f0f8ff"  # Alice Blue
-BUTTON_COLOR = "#add8e6"  # Light Blue
-TEXT_COLOR = "#00008b" # Dark Blue
 
 def setup_database():
     conn = pyodbc.connect(connectionString)
@@ -196,66 +193,171 @@ def fetch_weekly_hours_and_gaji(id_pegawai):
     # Format hasil sebagai rincian per hari
     rincian = []
     total_jam = 0
+    # Modifikasi saat memproses rincian absensi
     for row in results:
         tanggal, jam_kerja = row
-        rincian.append((tanggal, jam_kerja))
+        hari = datetime.strptime(tanggal, "%Y-%m-%d").strftime("%A")
+        rincian.append((f"{tanggal} ({hari})", jam_kerja))
         total_jam += jam_kerja
 
     return rincian, total_jam
+
+
+def format_tanggal_with_hari(tanggal):
+    """
+    Format tanggal dalam bentuk "Hari, DD Month YYYY"
+    """
+    hari = tanggal.strftime("%A")  # Nama hari
+    hari_indonesia = {
+        "Monday": "Senin",
+        "Tuesday": "Selasa",
+        "Wednesday": "Rabu",
+        "Thursday": "Kamis",
+        "Friday": "Jumat",
+        "Saturday": "Sabtu",
+        "Sunday": "Minggu"
+    }
+    hari = hari_indonesia.get(hari, hari)  # Ubah ke bahasa Indonesia
+    formatted_date = tanggal.strftime(f"{hari}, %d %B %Y")  # Contoh: Selasa, 25 November 2024
+    return formatted_date
+
+def check_payment_status(start_date, end_date):
+    """
+    Cek status pembayaran berdasarkan apakah tanggal sudah melewati Minggu terakhir.
+    """
+    today = datetime.now().date()  # Gunakan tanggal hari ini
+    end_of_week = end_date + timedelta(days=(6 - end_date.weekday()))  # Hitung hari Minggu minggu tersebut
+
+    if today > end_of_week:
+        return "Sudah Dilunasi"
+    else:
+        return "Belum Dilunasi"
+
+def group_by_week(start_date, end_date):
+    """
+    Mengelompokkan tanggal ke dalam minggu-minggu yang sesuai.
+    """
+    weeks = []
+    current_start = start_date
+    while current_start <= end_date:
+        current_end = min(current_start + timedelta(days=6), end_date)
+        weeks.append((current_start, current_end))
+        current_start = current_end + timedelta(days=1)
+    return weeks
+
+def round_to_monday(date):
+    """
+    Membulatkan tanggal ke hari Senin terdekat.
+    """
+    return date - timedelta(days=date.weekday())
 
 class AbsensiApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("☕Sistem Manajemen Kehadiran Pegawai Kafe IF☕")
-        self.geometry("500x400")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
         self.create_main_menu()
 
     def create_main_menu(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("500x400")
-        
-        main_frame = tk.Frame(self, bg=BACKGROUND_COLOR)
-        main_frame.pack(expand=True, fill='both')
-        
-        tk.Label(main_frame, text="☕Sistem Manajemen☕", font=("Arial", 18, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))
-        tk.Label(main_frame, text="Kehadiran Pegawai Kafe IF", font=("Arial", 14), bg=BACKGROUND_COLOR, fg='#666').pack(pady=(0, 20))
+
+        self.geometry("1024x768")
+
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
+
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
+
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        # Frame untuk elemen
+        # main_frame = tk.Frame(self, bg=BACKGROUND_COLOR)
+        # main_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)  # Pusatkan di layar
+
+
+        # # Gunakan label langsung tanpa frame tambahan
+        tk.Label(self, text="☕ Sistem Manajemen Kehadiran Pegawai Kafe Bahagia ☕", font=("Helvetica", 18, "bold"), bg="#AB886D", fg="#493628").pack(pady=(20, 250))
+        # tk.Label(self, text="Kehadiran Pegawai Kafe IF", font=("Helvetica", 14)).pack(pady=(0, 250))
 
         style = ttk.Style()
-        style.configure("TButton", font=("Arial", 12), padding=10, background="#ff6600", foreground="black")
-        style.map("TButton", background=[("active", "#ff8533")])
-        
-        ttk.Button(main_frame, text="Pemilik", command=self.show_pemilik_login).pack(pady=10)
-        ttk.Button(main_frame, text="Pegawai", command=self.show_pegawai_login).pack(pady=10)
-        
-        footer_frame = tk.Frame(main_frame, bg=BACKGROUND_COLOR)
-        footer_frame.pack(pady=20)
-        
-        tk.Label(footer_frame, text="Jayden Raphael - 6182201034", font=("Arial", 10), bg=BACKGROUND_COLOR).pack(pady=2)
-        tk.Label(footer_frame, text="Rio Sugiarno - 6182201043", font=("Arial", 10), bg=BACKGROUND_COLOR).pack(pady=2)
-        tk.Label(footer_frame, text="Gary Eugene - 6182201046", font=("Arial", 10), bg=BACKGROUND_COLOR).pack(pady=2)
-        tk.Label(footer_frame, text="Hepi Rahmat Stevanus Daeli - 6182201052", font=("Arial", 10), bg=BACKGROUND_COLOR).pack(pady=2)
+        style.configure(
+            "Custom.TButton",  # Nama gaya
+            font=("Helvetica", 12),  # Font
+            padding=10, 
+            background="#AB886D",  # Warna latar belakang
+            foreground="#493628"   # Warna teks
+        )
+        style.map(
+            "Custom.TButton",
+            background=[("active", "#ff8533")]  # Warna saat tombol aktif
+        )
+
+        ttk.Button(self, text="Pemilik", style="Custom.TButton", command=self.show_pemilik_login).pack(pady=10)
+        ttk.Button(self, text="Pegawai", style="Custom.TButton", command=self.show_pegawai_login).pack(pady=10)
+
+
+        # tk.Label(self, text="Jayden Raphael - 6182201034", font=("Helvetica", 10)).pack(pady=2)
+        # tk.Label(self, text="Rio Sugiarno - 6182201043", font=("Helvetica", 10)).pack(pady=2)
+        # tk.Label(self, text="Gary Eugene - 6182201046", font=("Helvetica", 10)).pack(pady=2)
+        # tk.Label(self, text="Hepi Rahmat Stevanus Daeli - 6182201052", font=("Helvetica", 10)).pack(pady=2)
 
     def show_pemilik_login(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("350x300")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
 
-        tk.Label(self, text="Login to Continue", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
 
-        tk.Label(self, text="Username:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        username_entry = tk.Entry(self)
-        username_entry.pack()
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
 
-        tk.Label(self, text="Email:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        email_entry = tk.Entry(self)
-        email_entry.pack()
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
 
-        tk.Label(self, text="Password:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        password_entry = tk.Entry(self, show='*')
-        password_entry.pack()
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        tk.Label(
+            self, 
+            text="Login to Continue", 
+            font=("Helvetica", 24, "bold"), 
+            bg="#AB886D", 
+            fg="#493628"
+        ).pack(pady=(20, 50))
+
+        # Field Username
+        tk.Label(self, text="Username:", font=("Helvetica", 16, "bold"), bg="#AB886D", fg="black").pack(pady=(10, 5))
+        username_entry = tk.Entry(self, font=("Helvetica", 14), width=30)
+        username_entry.pack(pady=(5, 15))
+
+        # Field Email
+        tk.Label(self, text="Email:", font=("Helvetica", 16, "bold"), bg="#AB886D", fg="black").pack(pady=(10, 5))
+        email_entry = tk.Entry(self, font=("Helvetica", 14), width=30)
+        email_entry.pack(pady=(5, 15))
+
+        # Field Password
+        tk.Label(self, text="Password:", font=("Helvetica", 16, "bold"), bg="#AB886D", fg="black").pack(pady=(10, 5))
+        password_entry = tk.Entry(self, font=("Helvetica", 14), width=30, show='*')
+        password_entry.pack(pady=(5, 15))
 
         def submit_login():
             username = username_entry.get()
@@ -281,37 +383,113 @@ class AbsensiApp(tk.Tk):
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
-        ttk.Button(self, text="Login", command=submit_login).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.create_main_menu).pack(pady=10)
+        # Gaya tombol
+        style = ttk.Style()
+        style.configure(
+            "Custom.TButton",
+            font=("Helvetica", 14),
+            padding=10,
+            background="#AB886D",
+            foreground="#493628"
+        )
+        style.map(
+            "Custom.TButton",
+            background=[("active", "#ff8533")]
+        )
+
+        # Tombol Login
+        ttk.Button(self, text="Login", style="Custom.TButton", command=submit_login).pack(pady=20, ipadx=10, ipady=5)
+        
+        # Tombol Back
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.create_main_menu).pack(pady=20, ipadx=10, ipady=5)
 
     def show_pemilik_menu(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("350x300")
-        self.configure(bg=BACKGROUND_COLOR)
-
-        tk.Label(self, text="Select to Continue", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))
+        self.geometry("1024x768")
         
-        style = ttk.Style()
-        style.configure("TButton", font=("Arial", 12), padding=10, background="#33cc33", foreground="black")
-        style.map("TButton", background=[("active", "#66ff66")])
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
 
-        ttk.Button(self, text="Registrasi Pegawai Baru", command=self.pegawai_baru).pack(pady=10)
-        ttk.Button(self, text="Laporan Absensi", command=self.laporan_kehadiran).pack(pady=10)
-        ttk.Button(self, text="Laporan Gaji", command=self.laporan_gaji).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.create_main_menu).pack(pady=10)
+
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
+
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        tk.Label(
+            self, 
+            text="Select to Continue", 
+            font=("Helvetica", 24, "bold"), 
+            bg="#AB886D", 
+            fg="#493628"
+        ).pack(pady=(20, 50))
+        
+
+        # Gaya tombol
+        style = ttk.Style()
+        style.configure(
+            "Custom.TButton",
+            font=("Helvetica", 14),
+            padding=10,
+            background="#AB886D",
+            foreground="#493628"
+        )
+        style.map(
+            "Custom.TButton",
+            background=[("active", "#ff8533")]
+        )
+
+        ttk.Button(self, text="Registrasi Pegawai Baru", style="Custom.TButton", command=self.pegawai_baru).pack(pady=10)
+        ttk.Button(self, text="Laporan Absensi",style="Custom.TButton", command=self.laporan_kehadiran).pack(pady=10)
+        ttk.Button(self, text="Laporan Gaji",style="Custom.TButton", command=self.laporan_gaji).pack(pady=10)
+        ttk.Button(self, text="Back",style="Custom.TButton", command=self.create_main_menu).pack(pady=10)
 
     def show_pegawai_login(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("350x200")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
 
-        tk.Label(self, text="Login Pegawai", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
 
-        tk.Label(self, text="Nomor Telepon:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        nomor_telepon_entry = tk.Entry(self)
-        nomor_telepon_entry.pack()
+
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
+
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        tk.Label(
+            self, 
+            text="Login Pegawai", 
+            font=("Helvetica", 24, "bold"), 
+            bg="#AB886D", 
+            fg="#493628"
+        ).pack(pady=(20, 50))
+
+        tk.Label(self, text="Nomor Telepon:", bg="#AB886D", fg="black", font=("Helvetica", 15)).pack(pady=(10, 5))
+        nomor_telepon_entry = tk.Entry(self, font=("Helvetica", 14), width=30)
+        nomor_telepon_entry.pack(pady=(5, 15))
 
         def submit_login():
             nomor_telepon = nomor_telepon_entry.get()
@@ -330,25 +508,68 @@ class AbsensiApp(tk.Tk):
                 conn.close()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
+            
+            style = ttk.Style()
+            style.configure(
+                "Custom.TButton",
+                font=("Helvetica", 15),
+                padding=3,
+                background="#AB886D",
+                foreground="black"
+            )
+            style.map(
+                "Custom.TButton",
+                background=[("active", "#ff8533")]
+            )
 
-        ttk.Button(self, text="Login", command=submit_login).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.create_main_menu).pack(pady=10)
+        ttk.Button(self, text="Login", style="Custom.TButton", command=submit_login).pack(pady=10)
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.create_main_menu).pack(pady=10)
 
     def show_pegawai_menu(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("350x250")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
+        
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
 
-        tk.Label(self, text="Select to Continue", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
 
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        # Judul layar
+        tk.Label(self, text="Select to Continue", font=("Helvetica", 18, "bold"), bg="#AB886D", fg="#493628").pack(pady=(20, 250))
+
+        # Setup Style untuk tombol
         style = ttk.Style()
-        style.configure("TButton", font=("Arial", 12), padding=10, background="#ff6600", foreground="black")
-        style.map("TButton", background=[("active", "#ff8533")])
+        style.configure(
+            "Custom.TButton",
+            font=("Helvetica", 10),
+            padding=3,
+            background="#AB886D",
+            foreground="black"
+        )
+        style.map(
+            "Custom.TButton",
+            background=[("active", "#ff8533")]
+        )
 
-        ttk.Button(self, text="Absensi", command=self.absensi).pack(pady=10)
-        ttk.Button(self, text="Gaji", command=self.gaji).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.create_main_menu).pack(pady=10)
+        # Tombol-tombol navigasi
+        ttk.Button(self, text="Absensi", style="Custom.TButton", command=self.absensi).pack(pady=10)
+        ttk.Button(self, text="Gaji", style="Custom.TButton", command=self.gaji).pack(pady=10)
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.create_main_menu).pack(pady=10)
+
 
     def pegawai_baru(self):
         for widget in self.winfo_children():

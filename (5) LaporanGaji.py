@@ -3,11 +3,13 @@ Connects to a SQL database using pyodbc
 """
 import pyodbc
 from datetime import datetime
-SERVER = 'HP-ENVY\\SQLEXPRESS'
-DATABASE = 'Demo28May'
+server = 'localhost,1433'
+database = 'ManajemenProyek'
+username = 'sa'
+password = 'Doraemon16!'
 
 # Connection string
-connectionstring = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={SERVER};DATABASE={DATABASE};Trusted_Connection=yes;TrustServerCertificate=yes;'
+connectionstring = f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes;'
 conn = pyodbc.connect(connectionstring)
 # Data yang akan dimasukkan
 # Ask user for the date range
