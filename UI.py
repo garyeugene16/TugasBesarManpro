@@ -710,19 +710,37 @@ class AbsensiApp(tk.Tk):
     def absensi(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("400x275")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
+        
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
 
-        tk.Label(self, text="Absensi", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0)) 
 
-        tk.Label(self, text="Apakah ini waktu masuk atau keluar? (masuk/keluar):", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
+
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        tk.Label(self, text="Absensi", font=("Helvetica", 16, "bold"), bg="#AB886D", fg="#493628").pack(pady=(20, 100)) 
+
+        tk.Label(self, text="Apakah ini waktu masuk atau keluar? (masuk/keluar):",font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 5))
         action_var = tk.StringVar()
-        action_dropdown = ttk.Combobox(self, textvariable=action_var, values=["masuk", "keluar"])
-        action_dropdown.pack()
+        action_dropdown = ttk.Combobox(self, textvariable=action_var, font=("Helvetica", 12), width=28, height=20, values=["masuk", "keluar"])
+        action_dropdown.pack(pady=(5, 15))
 
-        tk.Label(self, text="Masukkan nomor telepon untuk check-in/check-out:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
+        tk.Label(self, text="Masukkan nomor telepon untuk check-in/check-out:",font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 5))
         nomor_telepon_entry = tk.Entry(self)
-        nomor_telepon_entry.pack()
+        nomor_telepon_entry.pack(padx=(5, 15))
 
         def submit_absensi():
                 action = action_var.get().strip().lower()
@@ -788,25 +806,64 @@ class AbsensiApp(tk.Tk):
                 except Exception as e:
                     messagebox.showerror("Error", str(e))
 
-        ttk.Button(self, text="Submit", command=submit_absensi).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.show_pegawai_menu).pack(pady=10)
+        # Tombol Submit dan Back
+        style = ttk.Style()
+        style.configure(
+            "Custom.TButton",
+            font=("Helvetica", 10),
+            padding=3,
+            background="#AB886D",
+            foreground="black"
+        )
+        style.map(
+            "Custom.TButton",
+            background=[("active", "#ff8533")]
+        )
 
-    
-    
+
+        ttk.Button(self, text="Submit", style="Custom.TButton", command=submit_absensi).pack(pady=10)
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.show_pegawai_menu).pack(pady=10)
+
     def gaji(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("400x300")
+        self.geometry("1024x768")
+
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
+
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
+
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
         
-        tk.Label(self, text="Gaji Mingguan", font=("Arial", 14)).pack(pady=(20, 0))
+        # Judul
+        tk.Label(
+            self, 
+            text="Gaji Mingguan", 
+            font=("Helvetica", 16, "bold"), 
+            bg="#AB886D", 
+            fg="#493628"
+        ).pack(pady=(20, 100))
 
         try:
             rincian, total_jam = fetch_weekly_hours_and_gaji(self.id_pegawai)
 
             # Tampilkan rincian jam kerja per hari
-            tk.Label(self, text="Rincian Jam Kerja:").pack(pady=(10, 5))
+            tk.Label(self, text="Rincian Jam Kerja:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 5))
             for tanggal, jam_kerja in rincian:
-                tk.Label(self, text=f"{tanggal}: {jam_kerja} jam").pack()
+                hari_dengan_tanggal = format_tanggal_with_hari(datetime.strptime(tanggal.split(' ')[0], '%Y-%m-%d'))
+                tk.Label(self, text=f"{hari_dengan_tanggal}: {jam_kerja} jam", font=("Helvetica", 12), bg="#AB886D", fg="black").pack()
 
             # Hitung total gaji
             jabatan_dict = fetch_jabatan()
@@ -817,12 +874,28 @@ class AbsensiApp(tk.Tk):
             conn.close()
             
             total_gaji = total_jam * satuan_gaji
-            tk.Label(self, text=f"Total Jam Kerja: {total_jam} jam").pack(pady=(10, 5))
-            tk.Label(self, text=f"Total Gaji: Rp {total_gaji}").pack(pady=(10, 5))
+            tk.Label(self, text=f"Total Jam Kerja: {total_jam} jam", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 5))
+            tk.Label(self, text=f"Total Gaji: Rp {total_gaji}", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 5))
         except Exception as e:
             messagebox.showerror("Error", str(e))
 
-        tk.Button(self, text="Back", command=self.show_pegawai_menu).pack(pady=10)
+        # Tombol Submit dan Back
+        style = ttk.Style()
+        style.configure(
+            "Custom.TButton",
+            font=("Helvetica", 15),
+            padding=3,
+            background="#AB886D",
+            foreground="black"
+        )
+        style.map(
+            "Custom.TButton",
+            background=[("active", "#ff8533")]
+        )
+
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.show_pegawai_menu).pack(pady=10)
+
+        
 
     def laporan_gaji(self):
         for widget in self.winfo_children():
