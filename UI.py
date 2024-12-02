@@ -900,169 +900,284 @@ class AbsensiApp(tk.Tk):
     def laporan_gaji(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("400x400")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
 
-        tk.Label(self, text="Laporan Gaji", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))    
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("aww.jpg")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
+
+
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
+
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        tk.Label(
+            self, 
+            text="Laporan Gaji Per Minggu", 
+            font=("Helvetica", 16, "bold"), 
+            bg="#AB886D", 
+            fg="#493628"
+        ).pack(pady=(20, 20)) 
 
         # Dropdown untuk memilih Pegawai
-        tk.Label(self, text="Pilih Pegawai:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
+        tk.Label(self, text="Pilih Pegawai:", bg="#AB886D", fg="black", font=("Helvetica", 15)).pack(pady=(10, 5))
         pegawai_dict = fetch_pegawai()
         pegawai_var = tk.StringVar()
-        pegawai_dropdown = ttk.Combobox(self, textvariable=pegawai_var, values=list(pegawai_dict.values()))
+        pegawai_dropdown = ttk.Combobox(self, textvariable=pegawai_var, font=("Helvetica", 12), width=28, height=20, values=list(pegawai_dict.values()))
         pegawai_dropdown.pack()
 
-        tk.Label(self, text="Pilih tanggal mulai:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        start_date_entry = DateEntry(self, width=15, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
+        tk.Label(self, text="Pilih tanggal mulai:", bg="#AB886D", fg="black", font=("Helvetica", 15)).pack(pady=(10, 5))
+        start_date_entry = DateEntry(self, width=28, height=20, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
         start_date_entry.pack()
 
-        tk.Label(self, text="Pilih tanggal akhir:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        end_date_entry = DateEntry(self, width=15, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
+        tk.Label(self, text="Pilih tanggal akhir:", bg="#AB886D", fg="black", font=("Helvetica", 15)).pack(pady=(10, 5))
+        end_date_entry = DateEntry(self, width=28, height=20, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
         end_date_entry.pack()
 
         def submit_laporan_gaji():
-            selected_pegawai = pegawai_var.get()
+            selected_pegawai = pegawai_var.get()  # Pegawai yang dipilih dari dropdown
             start_date = start_date_entry.get_date()
             end_date = end_date_entry.get_date()
 
-            # Cari idPegawai berdasarkan nama
+            # Membulatkan tanggal mulai ke hari Senin terdekat
+            start_date = round_to_monday(start_date)
+
+            # Validasi bahwa pegawai telah dipilih
+            if not selected_pegawai:
+                messagebox.showerror("Error", "Pilih pegawai terlebih dahulu!")
+                return
+
+            # Cari id_pegawai berdasarkan nama pegawai yang dipilih
             id_pegawai = None
             for key, value in pegawai_dict.items():
                 if value == selected_pegawai:
                     id_pegawai = key
                     break
 
+            # Validasi bahwa id_pegawai ditemukan
             if id_pegawai is None:
-                messagebox.showerror("Error", "Pilih Pegawai yang valid!")
+                messagebox.showerror("Error", "Pegawai yang dipilih tidak valid!")
                 return
+
+            # Format tanggal dengan hari
+            formatted_start_date = format_tanggal_with_hari(start_date)
+            formatted_end_date = format_tanggal_with_hari(end_date)
+
+            # Mengelompokkan data berdasarkan minggu
+            weekly_ranges = group_by_week(start_date, end_date)
 
             try:
                 conn = pyodbc.connect(connectionString)
                 cursor = conn.cursor()
                 
-                query = """
-                SELECT 
-                    p.nama AS Nama_Pegawai,
-                    j.namaJabatan AS Nama_Jabatan,
-                    j.satuanGaji AS SatuanGaji,
-                    SUM(DATEDIFF(HOUR, a.waktuMasuk, a.waktuKeluar)) AS TotalJamKerja,
-                    SUM(DATEDIFF(HOUR, a.waktuMasuk, a.waktuKeluar) * j.satuanGaji) AS Laporan_Gaji
-                FROM 
-                    pegawai p
-                JOIN 
-                    Absensi a ON p.idPegawai = a.idPegawai
-                JOIN 
-                    jabatan j ON p.idJabatan = j.idJabatan
-                WHERE
-                    a.tanggalAbsensi BETWEEN ? AND ? AND a.idPegawai = ?
-                GROUP BY 
-                    p.nama, j.namaJabatan, j.satuanGaji
-                """
-                cursor.execute(query, (start_date, end_date, id_pegawai))
-                columns = [column[0] for column in cursor.description]
-                results = cursor.fetchall()
-                
                 result_window = tk.Toplevel(self)
-                result_window.title("Laporan Gaji")
+                result_window.title("Laporan Gaji Per Minggu")
                 
-                tree = ttk.Treeview(result_window, columns=columns, show='headings')
-                for col in columns:
-                    tree.heading(col, text=col)
-                    tree.column(col, minwidth=0, width=120)
+                tk.Label(result_window, text=f"Laporan Gaji dari {formatted_start_date} hingga {formatted_end_date}", font=("Helvetica", 12)).pack(pady=(10, 5))
+                
+                tree = ttk.Treeview(result_window, columns=("Minggu", "Total Jam Kerja", "Total Gaji", "Status Pembayaran"), show='headings')
+                tree.heading("Minggu", text="Minggu")
+                tree.heading("Total Jam Kerja", text="Total Jam Kerja")
+                tree.heading("Total Gaji", text="Total Gaji")
+                tree.heading("Status Pembayaran", text="Status Pembayaran")
+                tree.column("Minggu", minwidth=0, width=200)
+                tree.column("Total Jam Kerja", minwidth=0, width=150)
+                tree.column("Total Gaji", minwidth=0, width=150)
+                tree.column("Status Pembayaran", minwidth=0, width=150)
                 tree.pack(fill=tk.BOTH, expand=True)
-                
-                for row in results:
-                    tree.insert('', tk.END, values=row)
-                
+
+                # Menghitung data untuk setiap minggu
+                for week_start, week_end in weekly_ranges:
+                    query = """
+                    SELECT 
+                        SUM(DATEDIFF(HOUR, a.waktuMasuk, a.waktuKeluar)) AS TotalJamKerja,
+                        SUM(DATEDIFF(HOUR, a.waktuMasuk, a.waktuKeluar) * j.satuanGaji) AS TotalGaji
+                    FROM 
+                        Absensi a
+                    JOIN 
+                        pegawai p ON a.idPegawai = p.idPegawai
+                    JOIN 
+                        jabatan j ON p.idJabatan = j.idJabatan
+                    WHERE
+                        a.idPegawai = ? AND a.tanggalAbsensi BETWEEN ? AND ?
+                    """
+                    cursor.execute(query, (id_pegawai, week_start, week_end))
+                    result = cursor.fetchone()
+
+                    total_jam_kerja = result[0] or 0
+                    total_gaji = result[1] or 0
+
+                    # Cek status pembayaran
+                    payment_status = check_payment_status(week_start, week_end)
+
+                    # Format minggu
+                    week_range = f"{week_start.strftime('%d %b %Y')} - {week_end.strftime('%d %b %Y')}"
+                    tree.insert("", tk.END, values=(week_range, total_jam_kerja, f"Rp {total_gaji}", payment_status))
+
                 conn.close()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
-        
-        ttk.Button(self, text="Submit", command=submit_laporan_gaji).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.show_pemilik_menu).pack(pady=10)
 
+            # Tombol Submit dan Back
+            style = ttk.Style()
+            style.configure(
+                "Custom.TButton",
+                font=("Helvetica", 15),
+                padding=3,
+                background="#AB886D",
+                foreground="black"
+            )
+            style.map(
+                "Custom.TButton",
+                background=[("active", "#ff8533")]
+            )
+
+        ttk.Button(self, text="Submit", style="Custom.TButton", command=submit_laporan_gaji).pack(pady=10)
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.show_pemilik_menu).pack(pady=10)
         
     def laporan_kehadiran(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("400x400")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
 
-        tk.Label(self, text="Laporan Absensi", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))   
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("aww.jpg")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
+
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
+
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
+
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        tk.Label(
+            self, 
+            text="Laporan Absensi Per Minggu", 
+            font=("Helvetica", 24, "bold"), 
+            bg="#AB886D", 
+            fg="#493628"
+        ).pack(pady=(20, 50))
 
         # Dropdown untuk memilih Pegawai
-        tk.Label(self, text="Pilih Pegawai:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
+        tk.Label(self, text="Pilih Pegawai:", bg="#AB886D", fg="black", font=("Helvetica", 15)).pack(pady=(10, 2))
         pegawai_dict = fetch_pegawai()
         pegawai_var = tk.StringVar()
-        pegawai_dropdown = ttk.Combobox(self, textvariable=pegawai_var, values=list(pegawai_dict.values()))
-        pegawai_dropdown.pack()
+        pegawai_dropdown = ttk.Combobox(self, textvariable=pegawai_var, font=("Helvetica", 12), width=28, height=20, values=list(pegawai_dict.values()))
+        pegawai_dropdown.pack(pady=(5, 15))
 
-        tk.Label(self, text="Pilih tanggal mulai:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        start_date_entry = DateEntry(self, width=15, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
-        start_date_entry.pack()
+        tk.Label(self, text="Pilih tanggal mulai:", bg="#AB886D", fg="black", font=("Helvetica", 15)).pack(pady=(10, 2))
+        start_date_entry = DateEntry(self, width=28, height=20, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
+        start_date_entry.pack(pady=(5, 15))
 
-        tk.Label(self, text="Pilih tanggal akhir:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        end_date_entry = DateEntry(self, width=15, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
-        end_date_entry.pack()
+        tk.Label(self, text="Pilih tanggal akhir:", bg="#AB886D", fg="black", font=("Helvetica", 15)).pack(pady=(10, 2))
+        end_date_entry = DateEntry(self, width=28, height=20, background='darkblue', foreground='white', date_pattern='yyyy-MM-dd')
+        end_date_entry.pack(pady=(5, 15))
 
         def submit_laporan_kehadiran():
-            selected_pegawai = pegawai_var.get()
+            selected_pegawai = pegawai_var.get()  # Pegawai yang dipilih dari dropdown
             start_date = start_date_entry.get_date()
             end_date = end_date_entry.get_date()
 
-            # Cari idPegawai berdasarkan nama
+            # Membulatkan tanggal mulai ke hari Senin terdekat
+            start_date = round_to_monday(start_date)
+
+            # Validasi bahwa pegawai telah dipilih
+            if not selected_pegawai:
+                messagebox.showerror("Error", "Pilih pegawai terlebih dahulu!")
+                return
+
+            # Cari id_pegawai berdasarkan nama pegawai yang dipilih
             id_pegawai = None
             for key, value in pegawai_dict.items():
                 if value == selected_pegawai:
                     id_pegawai = key
                     break
 
+            # Validasi bahwa id_pegawai ditemukan
             if id_pegawai is None:
-                messagebox.showerror("Error", "Pilih Pegawai yang valid!")
+                messagebox.showerror("Error", "Pegawai yang dipilih tidak valid!")
                 return
+
+            # Format tanggal dengan hari
+            formatted_start_date = format_tanggal_with_hari(start_date)
+            formatted_end_date = format_tanggal_with_hari(end_date)
+
+            # Mengelompokkan data berdasarkan minggu
+            weekly_ranges = group_by_week(start_date, end_date)
 
             try:
                 conn = pyodbc.connect(connectionString)
                 cursor = conn.cursor()
                 
-                query = """
-                SELECT 
-                    p.nama AS Nama_Pegawai,
-                    CONVERT(VARCHAR, a.tanggalAbsensi, 23) AS Tanggal,
-                    CONVERT(VARCHAR, a.waktuMasuk, 8) AS Waktu_Masuk,
-                    CONVERT(VARCHAR, a.waktuKeluar, 8) AS Waktu_Keluar,
-                    DATEDIFF(HOUR, a.waktuMasuk, a.waktuKeluar) AS TotalJamKerja
-                FROM 
-                    pegawai p
-                JOIN 
-                    Absensi a ON p.idPegawai = a.idPegawai
-                WHERE
-                    a.tanggalAbsensi BETWEEN ? AND ? AND a.idPegawai = ?
-                ORDER BY
-                    a.tanggalAbsensi
-                """
-                cursor.execute(query, (start_date, end_date, id_pegawai))
-                columns = [column[0] for column in cursor.description]
-                results = cursor.fetchall()
-                
                 result_window = tk.Toplevel(self)
-                result_window.title("Laporan Kehadiran")
+                result_window.title("Laporan Absensi Per Minggu")
                 
-                tree = ttk.Treeview(result_window, columns=columns, show='headings')
-                for col in columns:
-                    tree.heading(col, text=col)
-                    tree.column(col, minwidth=0, width=120)
+                tk.Label(result_window, text=f"Laporan Absensi dari {formatted_start_date} hingga {formatted_end_date}", font=("Helvetica", 12)).pack(pady=(10, 5))
+                
+                tree = ttk.Treeview(result_window, columns=("Minggu", "Total Jam Kerja"), show='headings')
+                tree.heading("Minggu", text="Minggu")
+                tree.heading("Total Jam Kerja", text="Total Jam Kerja")
+                tree.column("Minggu", minwidth=0, width=300)
+                tree.column("Total Jam Kerja", minwidth=0, width=200)
                 tree.pack(fill=tk.BOTH, expand=True)
-                
-                for row in results:
-                    tree.insert('', tk.END, values=row)
-                
+
+                # Menghitung data untuk setiap minggu
+                for week_start, week_end in weekly_ranges:
+                    query = """
+                    SELECT 
+                        SUM(DATEDIFF(HOUR, a.waktuMasuk, a.waktuKeluar)) AS TotalJamKerja
+                    FROM 
+                        Absensi a
+                    WHERE
+                        a.idPegawai = ? AND a.tanggalAbsensi BETWEEN ? AND ?
+                    """
+                    cursor.execute(query, (id_pegawai, week_start, week_end))
+                    result = cursor.fetchone()
+
+                    total_jam_kerja = result[0] or 0
+
+                    # Format minggu
+                    week_range = f"{week_start.strftime('%d %b %Y')} - {week_end.strftime('%d %b %Y')}"
+                    tree.insert("", tk.END, values=(week_range, total_jam_kerja))
+
                 conn.close()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
-        
-        ttk.Button(self, text="Submit", command=submit_laporan_kehadiran).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.show_pemilik_menu).pack(pady=10)
+
+            # Tombol Submit dan Back
+            style = ttk.Style()
+            style.configure(
+                "Custom.TButton",
+                font=("Helvetica", 15),
+                padding=3,
+                background="#AB886D",
+                foreground="black"
+            )
+            style.map(
+                "Custom.TButton",
+                background=[("active", "#ff8533")]
+            )
+
+        ttk.Button(self, text="Submit",style="Custom.TButton", command=submit_laporan_kehadiran).pack(pady=10)
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.show_pemilik_menu).pack(pady=10)
 
 if __name__ == "__main__":
     kecamatan_dict, kelurahan_dict = fetch_kecamatan_kelurahan()
