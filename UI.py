@@ -574,49 +574,82 @@ class AbsensiApp(tk.Tk):
     def pegawai_baru(self):
         for widget in self.winfo_children():
             widget.destroy()
-        self.geometry("500x600")
-        self.configure(bg=BACKGROUND_COLOR)
+        self.geometry("1024x768")
 
-        tk.Label(self, text="Registrasi Pegawai Baru", font=("Arial", 16, "bold"), bg=BACKGROUND_COLOR, fg='#333').pack(pady=(20, 0))
-        tk.Label(self, text="Nama:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        nama_entry = tk.Entry(self)
-        nama_entry.pack()
+        # Muat gambar sebagai latar belakang
+        bg_image = Image.open("ass.png")  # Ganti dengan path ke gambar Anda
+        bg_image = bg_image.resize((1920, 1080), Image.Resampling.LANCZOS)  # Sesuaikan ukuran gambar dengan jendela
 
-        tk.Label(self, text="Nomor Telepon:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        nomor_telepon_entry = tk.Entry(self)
-        nomor_telepon_entry.pack()
+        # Tambahkan opacity pada gambar (0-255)
+        opacity = 200  # Semakin rendah nilai, semakin transparan
+        bg_image = bg_image.convert("RGBA")  # Ubah gambar ke format RGBA
+        alpha = bg_image.split()[3]  # Ambil channel alpha
+        alpha = alpha.point(lambda p: opacity)  # Sesuaikan nilai alpha
+        bg_image.putalpha(alpha)
 
-        tk.Label(self, text="Email:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        email_entry = tk.Entry(self)
-        email_entry.pack()
+        # Konversi ke ImageTk untuk Tkinter
+        bg_photo = ImageTk.PhotoImage(bg_image)
 
-        tk.Label(self, text="Alamat:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
-        alamat_entry = tk.Entry(self)
-        alamat_entry.pack()
+        bg_label = tk.Label(self, image=bg_photo, borderwidth=0)
+        bg_label.image = bg_photo  # Mencegah garbage collection
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
-        tk.Label(self, text="Kecamatan:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
+        # Judul
+        tk.Label(
+            self, 
+            text="Registrasi Pegawai Baru", 
+            font=("Helvetica", 16, "bold"), 
+            bg="#AB886D", 
+            fg="#493628"
+        ).pack(pady=(20, 20))
+
+        # Field Nama
+        tk.Label(self, text="Nama:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 2))
+        nama_entry = tk.Entry(self, font=("Helvetica", 12), width=30)
+        nama_entry.pack(pady=(5, 15))
+
+        # Field Nomor Telepon
+        tk.Label(self, text="Nomor Telepon:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 2))
+        nomor_telepon_entry = tk.Entry(self, font=("Helvetica", 12), width=30)
+        nomor_telepon_entry.pack(pady=(5, 15))
+
+        # Field Email
+        tk.Label(self, text="Email:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 2))
+        email_entry = tk.Entry(self, font=("Helvetica", 12), width=30)
+        email_entry.pack(pady=(5, 15))
+
+        # Field Alamat
+        tk.Label(self, text="Alamat:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 2))
+        alamat_entry = tk.Entry(self, font=("Helvetica", 12), width=30)
+        alamat_entry.pack(pady=(5, 15))
+
+        # Dropdown Kecamatan
+        tk.Label(self, text="Kecamatan:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 2))
         kecamatan_var = tk.StringVar()
-        kecamatan_dropdown = ttk.Combobox(self, textvariable=kecamatan_var, values=list(kecamatan_dict.values()))
-        kecamatan_dropdown.pack()
+        kecamatan_dropdown = ttk.Combobox(self, textvariable=kecamatan_var, font=("Helvetica", 12), width=28, values=list(kecamatan_dict.values()))
+        kecamatan_dropdown.pack(pady=(5, 15))
 
-        tk.Label(self, text="Kelurahan:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
+        # Dropdown Kelurahan
+        tk.Label(self, text="Kelurahan:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 2))
         kelurahan_var = tk.StringVar()
-        kelurahan_dropdown = ttk.Combobox(self, textvariable=kelurahan_var)
-        kelurahan_dropdown.pack()
+        kelurahan_dropdown = ttk.Combobox(self, textvariable=kelurahan_var, font=("Helvetica", 12), width=28)
+        kelurahan_dropdown.pack(pady=(5, 15))
 
         def update_kelurahan(*args):
             selected_kecamatan = kecamatan_var.get()
             selected_kecamatan_id = [k for k, v in kecamatan_dict.items() if v == selected_kecamatan][0]
             kelurahan_list = [v[0] for k, v in kelurahan_dict.items() if v[1] == selected_kecamatan_id]
             kelurahan_dropdown['values'] = kelurahan_list
-        
+
         kecamatan_var.trace_add('write', update_kelurahan)
 
-        tk.Label(self, text="Nama Jabatan:", bg=BACKGROUND_COLOR).pack(pady=(10, 5))
+        # Dropdown Jabatan
+        tk.Label(self, text="Nama Jabatan:", font=("Helvetica", 12), bg="#AB886D", fg="black").pack(pady=(10, 5))
         jabatan_var = tk.StringVar()
-        jabatan_dropdown = ttk.Combobox(self, textvariable=jabatan_var, values=list(jabatan_dict.values()))
-        jabatan_dropdown.pack()
+        jabatan_dropdown = ttk.Combobox(self, textvariable=jabatan_var, font=("Helvetica", 14), width=28, values=list(jabatan_dict.values()))
+        jabatan_dropdown.pack(pady=(5, 15))
 
+        # Fungsi Submit Pegawai
         def submit_pegawai():
             nama = nama_entry.get()
             nomor_telepon = nomor_telepon_entry.get()
@@ -625,11 +658,11 @@ class AbsensiApp(tk.Tk):
             kecamatan = kecamatan_var.get()
             kelurahan = kelurahan_var.get()
             nama_jabatan = jabatan_var.get()
-            
+
             try:
                 conn = pyodbc.connect(connectionString)
                 cursor = conn.cursor()
-                
+
                 cursor.execute("SELECT COUNT(*) FROM Pegawai WHERE NomorTelepon = ?", (nomor_telepon,))
                 if cursor.fetchone()[0] > 0:
                     messagebox.showerror("Error", "Nomor Telepon sudah terdaftar.")
@@ -637,7 +670,7 @@ class AbsensiApp(tk.Tk):
 
                 selected_kelurahan_id = [k for k, v in kelurahan_dict.items() if v[0] == kelurahan][0]
                 id_jabatan = [k for k, v in jabatan_dict.items() if v == nama_jabatan][0]
-                
+
                 SQL_QUERY_Pegawai = """
                     INSERT INTO pegawai (
                         nama,
@@ -656,9 +689,23 @@ class AbsensiApp(tk.Tk):
                 self.show_pemilik_menu()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
-        
-        ttk.Button(self, text="Submit", command=submit_pegawai).pack(pady=10)
-        ttk.Button(self, text="Back", command=self.show_pemilik_menu).pack(pady=10)
+
+        # Tombol Submit dan Back
+        style = ttk.Style()
+        style.configure(
+            "Custom.TButton",
+            font=("Helvetica", 10),
+            padding=3,
+            background="#AB886D",
+            foreground="black"
+        )
+        style.map(
+            "Custom.TButton",
+            background=[("active", "#ff8533")]
+        )
+
+        ttk.Button(self, text="Submit", style="Custom.TButton", command=submit_pegawai).pack(pady=10, ipadx=10, ipady=5)
+        ttk.Button(self, text="Back", style="Custom.TButton", command=self.show_pemilik_menu).pack(pady=10, ipadx=10, ipady=5)
 
     def absensi(self):
         for widget in self.winfo_children():
